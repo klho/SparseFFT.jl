@@ -23,17 +23,9 @@ const FORWARD      = FFTW.FORWARD
 const BACKWARD     = FFTW.BACKWARD
 const FFTPlan      = FFTW.FFTWPlan
 
-function spfft_blkdiv(n::Integer, k::Integer)
-  l = k
-  while n % l > 0
-    l -= 1
-  end
-  m = div(n, l)
-  l, m
-end
-
 # source files
 
 include("spfft1.jl")
+include("spfft2.jl")
 
 end # module

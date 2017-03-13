@@ -9,6 +9,17 @@ immutable cSpFFTPlan1{T<:SpFFTComplex,K}
   p::Vector{Int}
 end
 
+spfft_size(P::cSpFFTPlan1) = (size(P.X)..., length(P.w))
+
+function spfft_blkdiv(n::Integer, k::Integer)
+  l = k
+  while n % l > 0
+    l -= 1
+  end
+  m = div(n, l)
+  l, m
+end
+
 for (fcn, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
   sf  = Symbol("sp", fcn)
   psf = Symbol("plan_", sf)
@@ -19,18 +30,22 @@ for (fcn, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
   @eval begin
     function $psf{T<:SpFFTComplex,Ti<:Integer}(
         ::Type{T}, n::Integer, idx::AbstractVector{Ti}; args...)
+      n > 0 || throw(ArgumentError("n"))
       k = length(idx)
+      @inbounds for i = 1:k
+        (1 <= idx[i] <= n) || throw(DomainError())
+      end
       l, m = spfft_blkdiv(n, k)
       X = Array(T, l, m)
-      F = $pf(X, 1, args...)
+      F = $pf(X, 1; args...)
       wm = exp(2im*$K*pi/m)
       wn = exp(2im*$K*pi/n)
       w = Array(T, k)
       col = Array(Int, k)
       @inbounds for i = 1:k
-        row    = fld(idx[i]-1,l) + 1
-        col[i] = rem(idx[i]-1,l) + 1
-        w[i] = wm^(row-1) * wn^(col[i]-1)
+        rowm1  = fld(idx[i]-1, l)
+        col[i] = idx[i] - rowm1*l
+        w[i] = wm^rowm1 * wn^(col[i]-1)
       end
       cSpFFTPlan1{T,$K}(X, F, w, col, sortperm(col))
     end
@@ -38,8 +53,7 @@ for (fcn, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
     function $f2s{T<:SpFFTComplex,K}(
         y::AbstractVector{T}, P::cSpFFTPlan1{T,K}, x::AbstractVector{T};
         nb::Integer=$NB)
-      l, m = size(P.X)
-      k = length(P.col)
+      l, m, k = spfft_size(P)
       length(x) == l*m || throw(DimensionMismatch)
       length(y) == k   || throw(DimensionMismatch)
       transpose!(P.X, reshape(x,(m,l)))
@@ -67,8 +81,7 @@ for (fcn, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
     function $s2f{T<:SpFFTComplex,K}(
         y::AbstractVector{T}, P::cSpFFTPlan1{T,K}, x::AbstractVector{T};
         nb::Integer=$NB)
-      l, m = size(P.X)
-      k = length(P.col)
+      l, m, k = spfft_size(P)
       length(x) == k   || throw(DimensionMismatch)
       length(y) == l*m || throw(DimensionMismatch)
       P.X[:] = 0
