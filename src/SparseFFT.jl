@@ -8,20 +8,21 @@ References:
 
 module SparseFFT
 
+using Base.FFTW: fftwComplex, fftwReal, FORWARD, BACKWARD, FFTWPlan
+
 export
 
   # spfft1.jl
-  cSpFFTPlan1,
-  plan_spfft, plan_spbfft,
-  spfft_f2s!, spfft_s2f!
+  cSpFFTPlan1, rSpFFTPlan1,
+  plan_spfft, spfft_f2s!, spfft_s2f!,
+  plan_spbfft, spbfft_f2s!, spbfft_s2f!,
+  plan_sprfft, sprfft_f2s!
 
 # common
 
-const SpFFTComplex = FFTW.fftwComplex
-const SpFFTReal    = FFTW.fftwReal
-const FORWARD      = FFTW.FORWARD
-const BACKWARD     = FFTW.BACKWARD
-const FFTPlan      = FFTW.FFTWPlan
+const SpFFTComplex = fftwComplex
+const SpFFTReal    = fftwReal
+const FFTPlan      = FFTWPlan
 
 # source files
 
