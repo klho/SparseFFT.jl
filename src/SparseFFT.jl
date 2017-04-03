@@ -11,9 +11,8 @@ module SparseFFT
 using Base.FFTW: fftwReal, fftwComplex, fftwNumber, FORWARD, BACKWARD, FFTWPlan
 
 export
-
-  # spfft1.jl
   cSpFFTPlan1, rSpFFTPlan1, brSpFFTPlan1,
+  cSpFFTPlan2, rSpFFTPlan2, brSpFFTPlan2,
   plan_spfft, spfft_f2s!, spfft_s2f!,
   plan_spbfft, spbfft_f2s!, spbfft_s2f!,
   plan_sprfft, sprfft_f2s!,

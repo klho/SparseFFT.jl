@@ -173,8 +173,8 @@ function plan_sprfft{T<:SpFFTReal,Ti<:Integer}(
   rSpFFTPlan1{T}(X, Xc, F, w[p], col[p], p)
 end
 
-function sprfft_f2s!{T,Ty<:Complex}(
-    y::AbstractVector{Ty}, P::rSpFFTPlan1{T}, x::AbstractVector{T};
+function sprfft_f2s!{T,Tx<:Real,Ty<:Complex}(
+    y::AbstractVector{Ty}, P::rSpFFTPlan1{T}, x::AbstractVector{Tx};
     nb::Integer=NB)
   l, m, k = spfft_size(P)
   length(x) == l*m || throw(DimensionMismatch)
@@ -205,12 +205,12 @@ end
 ## (c2r, s2f)
 ## - input must contain only nonredundant frequencies
 
-immutable brSpFFTPlan1{T<:SpFFTReal,TF<:SpFFTComplex} <: SpFFTPlan1{T,BACKWARD}
+immutable brSpFFTPlan1{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan1{T,BACKWARD}
   X::Matrix{T}
-  Xc::Matrix{Complex{T}}
-  F::FFTPlan{TF,BACKWARD}
+  Xc::Matrix{Tc}
+  F::FFTPlan{Tc,BACKWARD}
   k::Int
-  w::Vector{Complex{T}}
+  w::Vector{Tc}
   col::Vector{Int}
   p::Vector{Int}
 end
@@ -260,16 +260,16 @@ function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
      xp[b] = -i
     b -= 1
   end
-  keep = col .<= size(Xc,1)
-    w =   w[keep]
-  col = col[keep]
-   xp =  xp[keep]
+  v = col .<= size(Xc,1)
+    w =   w[v]
+  col = col[v]
+   xp =  xp[v]
   p = sortperm(col)
   brSpFFTPlan1{T,Tc}(X, Xc, F, k, w[p], col[p], xp[p])
 end
 
-function spbrfft_s2f!{T,Tx<:Complex}(
-    y::AbstractVector{T}, P::brSpFFTPlan1{T}, x::AbstractVector{Tx};
+function spbrfft_s2f!{T,Tx<:Complex,Ty<:Real}(
+    y::AbstractVector{Ty}, P::brSpFFTPlan1{T}, x::AbstractVector{Tx};
     nb::Integer=NB)
   l, m, kc, k = spbrfft_size(P)
   length(x) == k   || throw(DimensionMismatch)
