@@ -40,13 +40,6 @@ end
 spfft_rc{T<:Real   }(::Type{T}, x) = real(x)  # no inexact error check
 spfft_rc{T<:Complex}(::Type{T}, x) =      x
 
-function spfft_rc!{T,Tx}(::Type{T}, x::AbstractArray{Tx})
-  @simd for i in 1:length(x)
-    @inbounds x[i] = spfft_rc(T, x[i])
-  end
-  x
-end
-
 for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
   sf  = Symbol("sp", f)
   psf = Symbol("plan_", sf)

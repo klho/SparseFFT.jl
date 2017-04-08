@@ -5,7 +5,7 @@ println("spfft1.jl")
 tic()
 
 n = 1000
-k =  100
+k =  101
 
 # complex transforms
 

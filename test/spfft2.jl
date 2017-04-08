@@ -6,7 +6,7 @@ tic()
 
 n1 = 50
 n2 = 50
-k1 = 10
+k1 = 11
 k2 = 10
 
 # complex transforms
