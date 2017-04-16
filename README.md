@@ -20,10 +20,11 @@ y[i] = sum([w(n)^((i-1)*(j-1))*x[j] for j in 1:n])
 where `w(p) = exp(-2im*pi/p)` or `exp(2im*pi/p)` depending on the transform direction. Then to compute any set of `k` entries, where we assume for simplicity that `m = n/k` is integral, use the identity:
 
 ```julia
-y[k*(i1-1)+i2] = sum([w(m)^((i1-1)*(j2-1))
-                        * w(n)^((i2-1)*(j2-1))
-                        * sum([w(k)^((i2-1)*(j1-1))*x[m*(j1-1)+j2] for j1 = 1:k])
-                      for j2 = 1:m])
+y[k*(i1-1)+i2] =
+    sum([w(m)^((i1-1)*(j2-1))
+             * w(n)^((i2-1)*(j2-1))
+             * sum([w(k)^((i2-1)*(j1-1))*x[m*(j1-1)+j2] for j1 = 1:k])
+         for j2 = 1:m])
 ```
 
 for `i1 in 1:m` and `i2 in 1:k`, i.e., do `m` FFTs of size `k` (over `j1`) then sum `m` terms (over `j2`) for each entry. The dual sparse-to-full problem is similar, with both algorithms having `O(n*log(k))` complexity. Sparse FFTs in 2D (and higher dimensions) can be handled via tensor 1D transforms.
