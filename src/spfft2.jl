@@ -119,6 +119,8 @@ function sprfft_f2s!{T,Tx<:Real,Ty<:Complex}(
 end
 
 ## (c2r, s2f)
+## - input must contain only nonredundant frequencies, i.e., up to index
+##   n1/2 + 1 in the first dimension for a full size of n1
 
 immutable brSpFFTPlan2{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan2{T,BACKWARD}
   P1::brSpFFTPlan1{T,Tc}

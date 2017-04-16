@@ -71,4 +71,4 @@ end
 include("spfft1.jl")
 include("spfft2.jl")
 
-end # module
+end  # module

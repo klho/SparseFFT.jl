@@ -196,7 +196,8 @@ function sprfft_f2s!{T,Tx<:Real,Ty<:Complex}(
 end
 
 ## (c2r, s2f)
-## - input must contain only nonredundant frequencies
+## - input must contain only nonredundant frequencies, i.e., up to index n/2 + 1
+##   for a full signal of size n
 
 immutable brSpFFTPlan1{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan1{T,BACKWARD}
   X::Matrix{T}
@@ -210,7 +211,7 @@ end
 
 function spbrfft_fullsize{T<:Integer}(idx::AbstractVector{T}, n::Integer)
   d, r = divrem(n, 2)
-  nyq = r == 0 ? d+1 : 0
+  nyq = r == 0 ? d+1 : 0  # if even, highest frequency only appears once
   n = 0
   for i in idx
     n += (i == 1 || i == nyq) ? 1 : 2
