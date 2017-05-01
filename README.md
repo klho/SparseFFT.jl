@@ -17,7 +17,7 @@ Sparse FFTs can be efficiently computed by, taking the first case for concretene
 y[i] = sum([w(n)^((i-1)*(j-1))*x[j] for j in 1:n])
 ```
 
-where `w(p) = exp(-2im*pi/p)` or `exp(2im*pi/p)` depending on the transform direction. Then to compute any set of `k` entries, where we assume for simplicity that `m = n/k` is integral, use the identity:
+where `w(p) = exp(-2im*pi/p)` or `exp(2im*pi/p)` depending on the transform direction. Then to compute any set of `k` entries, assuming for simplicity that `m = n/k` is integral, use the identity:
 
 ```julia
 y[k*(i1-1)+i2] =
@@ -27,7 +27,7 @@ y[k*(i1-1)+i2] =
          for j2 = 1:m])
 ```
 
-for `i1 in 1:m` and `i2 in 1:k`, i.e., do `m` FFTs of size `k` (over `j1`) then sum `m` terms (over `j2`) for each entry. The dual sparse-to-full problem is similar, with both algorithms having `O(n*log(k))` complexity. Sparse FFTs in 2D (and higher dimensions) can be handled via tensor 1D transforms.
+for `i1 in 1:m` and `i2 in 1:k`, i.e., do `m` FFTs of size `k` (over `j1`) then sum `m` terms (over `j2`) for each entry. If `k` does not divide `n`, then we replace it in the above with a divisor `l` close to `k`. The dual sparse-to-full problem is similar, with both algorithms having `O(n*log(l))` complexity. Sparse FFTs in 2D (and higher dimensions) can be handled via tensor 1D transforms.
 
 For further details, see:
 
@@ -38,14 +38,15 @@ For further details, see:
 
 SparseFFT follows the same organizational principle as FFTW, with separate planning and execution routines. The primary planning functions in 1D are:
 
-- `plan_spfft (T, n, idx; plan_fft_args)`
-- `plan_spbfft(T, n, idx; plan_fft_args)`
+- `plan_spfft (T, n, idx; dir, plan_fft_args)`
+- `plan_spbfft(T, n, idx; dir, plan_fft_args)`
 
 which produce, respectively, plans for forward and backward transforms, with arguments:
 
 - `T`: underlying FFT `Complex` type (e.g., `Complex128`)
 - `n`: full domain size
-- `idx`: sparse domain indices
+- `idx`: sparse domain indices (of size `k`)
+- `dir`: divisor search direction; returns closest `l <= k` if negative, `>= k` if positive, in either direction if zero
 - `plan_fft_args`: optional arguments for underlying FFT planner
 
 Corresponding execution functions include:
@@ -59,8 +60,8 @@ which perform full-to-sparse (`f2s`) or sparse-to-full (`s2f`) transforms, as ap
 
 Optimizations using real FFTs are available for the real-to-complex full-to-sparse and complex-to-full sparse-to-real cases. Planning routines:
 
-- `plan_sprfft (T, n, idx; plan_fft_args)`
-- `plan_spbrfft(T, n, idx; plan_fft_args)`
+- `plan_sprfft (T, n, idx; dir, plan_fft_args)`
+- `plan_spbrfft(T, n, idx; dir, plan_fft_args)`
 
 where now `T <: Real` and `idx` for the backward transform must contain only nonredundant frequencies, i.e., up to index `div(n,2) + 1`. Execution routines:
 
@@ -69,7 +70,7 @@ where now `T <: Real` and `idx` for the backward transform must contain only non
 
 In 2D, we have essentially the essentially the same interface, with the following exceptions:
 
-- The generic planner now takes the form `plan_sp*fft(T, n1, n2, idx1, idx2; plan_fft_args)`, where the full domain has size `n1 x n2` and the sparse domain is defined as the tensor-product grid between `idx1` and `idx2`.
+- The generic planner now takes the form `plan_sp*fft(T, n1, n2, idx1, idx2; dir, plan_fft_args)`, where the full domain has size `n1 x n2` and the sparse domain is defined as the tensor-product grid between `idx1` and `idx2`.
 
 - For `plan_spbrfft`, `idx1` can only contain indices up to `div(n1,2) + 1`.
 
