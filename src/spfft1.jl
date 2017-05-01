@@ -64,7 +64,9 @@ for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
         col[i] = colm1 + 1
       end
       p = sortperm(col)
-      cSpFFTPlan1{T,$K}(X, F, w[p], col[p], p)
+      permute!(  w, p)
+      permute!(col, p)
+      cSpFFTPlan1{T,$K}(X, F, w, col, p)
     end
 
     function $f2s{T,K,Tx,Ty}(
@@ -163,7 +165,9 @@ function plan_sprfft{T<:SpFFTReal,Ti<:Integer}(
     col[i] = colm1 + 1
   end
   p = sortperm(col)
-  rSpFFTPlan1{T}(X, Xc, F, w[p], col[p], p)
+  permute!(  w, p)
+  permute!(col, p)
+  rSpFFTPlan1{T}(X, Xc, F, w, col, p)
 end
 
 function sprfft_f2s!{T,Tx<:Real,Ty<:Complex}(
@@ -259,7 +263,10 @@ function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
   col = col[v]
    xp =  xp[v]
   p = sortperm(col)
-  brSpFFTPlan1{T,Tc}(X, Xc, F, k, w[p], col[p], xp[p])
+  permute!(  w, p)
+  permute!(col, p)
+  permute!( xp, p)
+  brSpFFTPlan1{T,Tc}(X, Xc, F, k, w, col, xp)
 end
 
 function spbrfft_s2f!{T,Tx<:Complex,Ty<:Real}(
