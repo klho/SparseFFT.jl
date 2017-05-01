@@ -45,9 +45,15 @@ which produce, respectively, plans for forward and backward transforms, with arg
 
 - `T`: underlying FFT `Complex` type (e.g., `Complex128`)
 - `n`: full domain size
-- `idx`: sparse domain indices (of size `k`)
-- `dir`: divisor search direction; returns closest `l <= k` if negative, `>= k` if positive, in either direction if zero
+- `idx`: sparse domain indices
+- `dir`: optional divisor search direction
 - `plan_fft_args`: optional arguments for underlying FFT planner
+
+The divisor search direction controls how `l` is determined from `k`:
+
+- If `dir < 0`, use  largest divisor `l <= k`.
+- If `dir > 0`, use smallest divisor `l >= k`.
+- If `dir = 0`, use  closest divisor in either direction.
 
 Corresponding execution functions include:
 
