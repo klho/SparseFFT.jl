@@ -90,24 +90,27 @@ for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
       length(y) == k   || throw(DimensionMismatch)
       transpose!(P.X, reshape(x,(m,l)))
       P.F*P.X
-      y[:] = 0
       nb = min(nb, k)
-      s = Array(T, nb)
+      t = Array(Ty, nb)
+      s = Array(T , nb)
       idx = 0
       while idx < k
+        t[:] = 0
         s[:] = 1
         nbi = min(nb, k-idx)
         @inbounds for j = 1:m
           for i = 1:nbi
             ii = idx + i
-            z = spfft_rc(Ty, s[i]*P.X[P.col[ii],j])
-            y[ii] += z
+            t[i] += spfft_rc(Ty, s[i]*P.X[P.col[ii],j])
             s[i] *= P.w[ii]
           end
         end
+        @inbounds for i = 1:nbi
+          y[P.p[idx+i]] = t[i]
+        end
         idx += nbi
       end
-      ipermute!(y, P.p)
+      y
     end
 
     function $s2f{T,K,Tx,Ty}(
@@ -118,16 +121,19 @@ for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
       length(y) == l*m || throw(DimensionMismatch)
       P.X[:] = 0
       nb = min(nb, k)
-      s = Array(T, nb)
+      t = Array(Tx, nb)
+      s = Array(T , nb)
       idx = 0
-      xp = x[P.p]
       while idx < k
         s[:] = 1
         nbi = min(nb, k-idx)
+        @inbounds for i = 1:nbi
+          t[i] = x[P.p[idx+i]]
+        end
         @inbounds for j = 1:m
           for i = 1:nbi
             ii = idx + i
-            P.X[P.col[ii],j] += s[i]*xp[ii]
+            P.X[P.col[ii],j] += s[i]*t[i]
             s[i] *= P.w[ii]
           end
         end
@@ -191,25 +197,30 @@ function sprfft_f2s!{T,Tx<:Real,Ty<:Complex}(
   length(y) == k   || throw(DimensionMismatch)
   transpose!(P.X, reshape(x,(m,l)))
   A_mul_B!(P.Xc, P.F, P.X)
-  y[:] = 0
   nb = min(nb, k)
-  s = Array(Complex{T}, nb)
+  Tc = Complex{T}
+  t = Array(Ty, nb)
+  s = Array(Tc, nb)
   nyq = size(P.Xc, 1)
   idx = 0
   while idx < k
+    t[:] = 0
     s[:] = 1
     nbi = min(nb, k-idx)
     @inbounds for j = 1:m
       for i = 1:nbi
         ii = idx + i
         z = sprfft_fullcomplex(P.Xc, P.col[ii], j, l, nyq)
-        y[ii] += s[i]*z
+        t[i] += s[i]*z
         s[i] *= P.w[ii]
       end
     end
+    @inbounds for i = 1:nbi
+      y[P.p[idx+i]] = t[i]
+    end
     idx += nbi
   end
-  ipermute!(y, P.p)
+  y
 end
 
 ## (c2r, s2f)
@@ -290,20 +301,21 @@ function spbrfft_s2f!{T,Tx<:Complex,Ty<:Real}(
   length(y) == l*m || throw(DimensionMismatch)
   P.Xc[:] = 0
   nb = min(nb, kc)
-  s = Array(Complex{T}, nb)
+  Tc = Complex{T}
+  t = Array(Tx, nb)
+  s = Array(Tc, nb)
   idx = 0
-  xp = Array(Tx, kc)
-  for i = 1:kc
-    p = P.p[i]
-    xp[i] = p > 0 ? x[p] : conj(x[-p])
-  end
   while idx < kc
     s[:] = 1
     nbi = min(nb, kc-idx)
+    @inbounds for i = 1:nbi
+      p = P.p[idx+i]
+      t[i] = p > 0 ? x[p] : conj(x[-p])
+    end
     @inbounds for j = 1:m
       for i = 1:nbi
         ii = idx + i
-        P.Xc[P.col[ii],j] += s[i]*xp[ii]
+        P.Xc[P.col[ii],j] += s[i]*t[i]
         s[i] *= P.w[ii]
       end
     end
