@@ -4,8 +4,8 @@
 println("spfft1.jl")
 tic()
 
-n = 1000
-k =  201
+n = 1500
+k =  151
 
 # complex transforms
 
