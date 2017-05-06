@@ -262,40 +262,30 @@ function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
   F = plan_brfft(Xc, l, 1; args...)
   wm = exp(2im*pi/m)
   wn = exp(2im*pi/n)
-  w = Array(Tc, kf)
-  col = Array(Int, kf)
-  xp  = Array(Int, kf)
+  w = Array(Tc, 0)
+  col = Array(Int, 0)
+  xp = Array(Int, 0)
+  sizehint!(  w, k)
+  sizehint!(col, k)
+  sizehint!( xp, k)
   lc = size(Xc, 1)
-  a = 0
-  b = kf
   @inbounds for i = 1:k
     idxm1 = idx[i] - 1
     rowm1, colm1 = divrem(idxm1, l)
     if colm1 < lc
-      a += 1
-      w[a] = wm^rowm1 * wn^colm1
-      col[a] = colm1 + 1
-      xp[a] = i
+      push!(w, wm^rowm1 * wn^colm1)
+      push!(col, colm1 + 1)
+      push!(xp, i)
     end
     (idxm1 == 0 || idxm1 == nyqm1) && continue
     idxm1 = n - idxm1
     rowm1, colm1 = divrem(idxm1, l)
     if colm1 < lc
-      w[b] = wm^rowm1 * wn^colm1
-      col[b] = colm1 + 1
-      xp[b] = -i
-      b -= 1
+      push!(w, wm^rowm1 * wn^colm1)
+      push!(col, colm1 + 1)
+      push!(xp, -i)
     end
   end
-  @inbounds @simd for i = 1:kf-b
-    w[a+i] = w[b+i]
-    col[a+i] = col[b+i]
-    xp[a+i] = xp[b+i]
-  end
-  sz = a + kf - b
-  w = w[1:sz]
-  col = col[1:sz]
-  xp = xp[1:sz]
   p = sortperm(col)
   permute!(  w, p)
   permute!(col, p)
