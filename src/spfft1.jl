@@ -170,9 +170,10 @@ function plan_sprfft{T<:SpFFTReal,Ti<:Integer}(
   spfft_chkidx(n, idx)
   k = length(idx)
   l, m = spfft_blkdiv(n, k, dir)
+  lc = div(l, 2) + 1
   Tc = Complex{T}
-  X  = Array(T, l, m)
-  Xc = Array(Tc, div(l,2)+1, m)
+  X  = Array(T , l , m)
+  Xc = Array(Tc, lc, m)
   F = plan_rfft(X, 1; args...)
   wm = exp(-2im*pi/m)
   wn = exp(-2im*pi/n)
@@ -237,16 +238,6 @@ immutable brSpFFTPlan1{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan1{T,BACKWARD}
   p::Vector{Int}
 end
 
-function spbrfft_fullsize{T<:Integer}(idx::AbstractVector{T}, n::Integer)
-  d, r = divrem(n, 2)
-  nyq = r == 0 ? d+1 : 0  # if even, highest frequency only appears once
-  n = 0
-  for i in idx
-    n += (i == 1 || i == nyq) ? 1 : 2
-  end
-  n
-end
-
 spbrfft_size(P::brSpFFTPlan1) = (spfft_size(P)..., P.k)
 
 function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
@@ -254,11 +245,11 @@ function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
   nyqm1 = div(n, 2)
   spfft_chkidx(nyqm1+1, idx)
   k = length(idx)
-  kf = spbrfft_fullsize(idx, n)
   l, m = spfft_blkdiv(n, k, dir)
+  lc = div(l, 2) + 1
   Tc = Complex{T}
-  X  = Array(T, l, m)
-  Xc = Array(Tc, div(l,2)+1, m)
+  X  = Array(T , l , m)
+  Xc = Array(Tc, lc, m)
   F = plan_brfft(Xc, l, 1; args...)
   wm = exp(2im*pi/m)
   wn = exp(2im*pi/n)
@@ -268,7 +259,6 @@ function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
   sizehint!(  w, k)
   sizehint!(col, k)
   sizehint!( xp, k)
-  lc = size(Xc, 1)
   @inbounds for i = 1:k
     idxm1 = idx[i] - 1
     rowm1, colm1 = divrem(idxm1, l)
