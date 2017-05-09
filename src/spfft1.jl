@@ -5,26 +5,13 @@ abstract SpFFTPlan1{T,K}
 
 const NB = 128  # default block size; actual used can be set on FFT execution
 
-# dir < 0:  largest divisor l <= k
-# dir > 0: smallest divisor l >= k
-# dir = 0:  closest divisor in either direction
-function spfft_blkdiv(n::Integer, k::Integer, dir)
-  l = spfft_blkdiv_l(n, k, dir)
+function spfft_blkdiv(n::Integer, k::Integer)
+  l = k
+  while n % l > 0
+    l -= 1
+  end
   m = div(n, l)
   l, m
-end
-function spfft_blkdiv_l(n::Integer, k::Integer, dir)
-  if dir == 0
-    l1 = spfft_blkdiv_l(n, k, -1)
-    l2 = spfft_blkdiv_l(n, k,  1)
-    l = k - l1 <= l2 - k ? l1 : l2
-  else
-    l = k
-    while n % l > 0
-      l += sign(dir)
-    end
-  end
-  l
 end
 
 function spfft_chkidx{T<:Integer}(n::Integer, idx::AbstractVector{T})
@@ -61,10 +48,10 @@ for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
   s2f = Symbol(sf, "_s2f!")
   @eval begin
     function $psf{T<:SpFFTComplex,Ti<:Integer}(
-        ::Type{T}, n::Integer, idx::AbstractVector{Ti}; dir=0, args...)
+        ::Type{T}, n::Integer, idx::AbstractVector{Ti}; args...)
       spfft_chkidx(n, idx)
       k = length(idx)
-      l, m = spfft_blkdiv(n, k, dir)
+      l, m = spfft_blkdiv(n, k)
       X = Array(T, l, m)
       F = $pf(X, 1; args...)
       wm = exp(2im*$K*pi/m)
@@ -166,10 +153,10 @@ function sprfft_fullcomplex{T<:SpFFTComplex}(
 end
 
 function plan_sprfft{T<:SpFFTReal,Ti<:Integer}(
-    ::Type{T}, n::Integer, idx::AbstractVector{Ti}; dir=0, args...)
+    ::Type{T}, n::Integer, idx::AbstractVector{Ti}; args...)
   spfft_chkidx(n, idx)
   k = length(idx)
-  l, m = spfft_blkdiv(n, k, dir)
+  l, m = spfft_blkdiv(n, k)
   lc = div(l, 2) + 1
   Tc = Complex{T}
   X  = Array(T , l , m)
@@ -241,11 +228,11 @@ end
 spbrfft_size(P::brSpFFTPlan1) = (spfft_size(P)..., P.k)
 
 function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
-    ::Type{T}, n::Integer, idx::AbstractVector{Ti}; dir=0, args...)
+    ::Type{T}, n::Integer, idx::AbstractVector{Ti}; args...)
   nyqm1 = div(n, 2)
   spfft_chkidx(nyqm1+1, idx)
   k = length(idx)
-  l, m = spfft_blkdiv(n, k, dir)
+  l, m = spfft_blkdiv(n, k)
   lc = div(l, 2) + 1
   Tc = Complex{T}
   X  = Array(T , l , m)
