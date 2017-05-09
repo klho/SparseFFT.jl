@@ -267,7 +267,7 @@ function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
       push!(col, colm1 + 1)
       push!(xp, i)
     end
-    (idxm1 == 0 || idxm1 == nyqm1) && continue
+    (idxm1 == 0 || (n % 2 == 0 && idxm1 == nyqm1)) && continue
     idxm1 = n - idxm1
     rowm1, colm1 = divrem(idxm1, l)
     if colm1 < lc
