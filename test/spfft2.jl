@@ -75,7 +75,9 @@ end
 # real transforms
 
 m1 = div(n1,2) + 1
-r2 = randperm(n2)[1:k2]
+m2 = div(n2,2) + 1
+r1 = vcat([1,m1], 1+randperm(m1-2)[1:k1-2])  # include edge cases
+r2 = vcat([1,m2], 1+randperm(m2-2)[1:k2-2])
 
 for T in (Float32, Float64)
   Tc = Complex{T}
@@ -86,7 +88,6 @@ for T in (Float32, Float64)
 
   # (r2c, f2s)
   println("  sprfft/$T")
-  r1 = randperm(m1)[1:k1]
   P = plan_sprfft(T, n1, n2, r1, r2)
   rand!(x)
   f = rfft(x)[r1,r2]
@@ -95,11 +96,14 @@ for T in (Float32, Float64)
 
   # (c2r, s2f)
   println("  spbrfft/$T")
-  r1 = vcat([1,m1], 1+randperm(m1-2)[1:k1-2])  # include edge cases
   P = plan_spbrfft(T, n1, n2, r1, r2)
   rand!(y)
-  idx1 = (r1 .== 1) | (r1 .== m1)
-  y[idx1,:] = real(y[idx1,:])
+  y[r1.==1,r2.==1] = real(y[r1.==1,r2.==1])
+  even1 = n1 % 2 == 0
+  even2 = n2 % 2 == 0
+  even1 && (y[r1.==m1,1] = real(y[r1.==m1,1]))
+  even2 && (y[1,r2.==m2] = real(y[1,r2.==m2]))
+  (even1 && even2) && (y[r1.==m1,r2.==m2] = real(y[r1.==m1,r2.==m2]))
   xc[:] = 0
   xc[r1,r2] = y
   f = brfft(xc, n1)

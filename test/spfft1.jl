@@ -72,6 +72,7 @@ end
 # real transforms
 
 m = div(n,2) + 1
+r = vcat([1,m], 1+randperm(m-2)[1:k-2])  # include edge cases
 
 for T in (Float32, Float64)
   Tc = Complex{T}
@@ -82,7 +83,6 @@ for T in (Float32, Float64)
 
   # (r2c, f2s)
   println("  sprfft/$T")
-  r = randperm(m)[1:k]
   P = plan_sprfft(T, n, r)
   rand!(x)
   f = rfft(x)[r]
@@ -91,11 +91,11 @@ for T in (Float32, Float64)
 
   # (c2r, s2f)
   println("  spbrfft/$T")
-  r = vcat([1,m], 1+randperm(m-2)[1:k-2])  # include edge cases
   P = plan_spbrfft(T, n, r)
   rand!(y)
-  idx = (r .== 1) | (r .== m)
-  y[idx] = real(y[idx])
+  y[r.==1] = real(y[r.==1])
+  even = n % 2 == 0
+  even && (y[r.==m] = real(y[r.==m]))
   xc[:] = 0
   xc[r] = y
   f = brfft(xc, n)
