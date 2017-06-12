@@ -34,6 +34,8 @@ For further details, see:
 - [F. Woolfe, E. Liberty, V. Rokhlin, M. Tygert. A fast randomized algorithm for the approximation of matrices. Appl. Comput. Harmon. Anal. 25: 335-366, 2008](http://dx.doi.org/10.1016/j.acha.2007.12.002)
 - http://www.fftw.org/pruned.html
 
+**Note**: An obvious optimization that we have not implemented here is to simply do the full FFT then subsample for transforms that are too small or not sufficiently sparse. This is especially important in higher dimensions where each individual dimension may not directly permit much savings.
+
 ## Usage
 
 SparseFFT follows the same organizational principle as FFTW, with separate planning and execution routines. The primary planning functions in 1D are:
@@ -101,7 +103,7 @@ Sample output (with annotations):
 
 ```julia
   0.043323 seconds (72 allocations: 15.415 MB)     # fft
-  0.000344 seconds (128 allocations: 3.254 MB)     # plan_spfft
-  0.025395 seconds (7.71 k allocations: 3.072 MB)  # spfft_f2s!
-4.066617809196614e-15                              # vecnorm
+  0.000529 seconds (124 allocations: 3.252 MB)     # plan_spfft
+  0.020511 seconds (6.61 k allocations: 4.012 MB)  # spfft_f2s!
+2.568551894989442e-15                              # vecnorm
 ```
