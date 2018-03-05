@@ -1,7 +1,7 @@
 #= src/spfft1.jl
 =#
 
-abstract SpFFTPlan1{T,K}
+abstract type SpFFTPlan1{T,K} end
 
 const NB = 128  # default block size; actual used can be set on FFT execution
 
@@ -52,12 +52,12 @@ for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
       spfft_chkidx(n, idx)
       k = length(idx)
       l, m = spfft_blkdiv(n, k)
-      X = Array(T, l, m)
+      X = Array{T}(l, m)
       F = $pf(X, 1; args...)
       wm = exp(2im*$K*pi/m)
       wn = exp(2im*$K*pi/n)
-      w = Array(T, k)
-      col = Array(Int, k)
+      w = Array{T}(k)
+      col = Array{Int}(k)
       @inbounds for i = 1:k
         rowm1, colm1 = divrem(idx[i]-1, l)
         w[i] = wm^rowm1 * wn^colm1
@@ -78,8 +78,8 @@ for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
       transpose!(P.X, reshape(x,(m,l)))
       P.F*P.X
       nb = min(nb, k)
-      t = Array(Ty, nb)
-      s = Array(T , nb)
+      t = Array{Ty}(nb)
+      s = Array{T }(nb)
       idx = 0
       while idx < k
         t[:] = 0
@@ -108,8 +108,8 @@ for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
       length(y) == l*m || throw(DimensionMismatch)
       P.X[:] = 0
       nb = min(nb, k)
-      t = Array(Tx, nb)
-      s = Array(T , nb)
+      t = Array{Tx}(nb)
+      s = Array{T }(nb)
       idx = 0
       while idx < k
         s[:] = 1
@@ -127,7 +127,7 @@ for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
         idx += nbi
       end
       P.F*P.X
-      transpose_f!(_->spfft_rc(Ty,_), reshape(y,(m,l)), P.X)
+      transpose_f!(z->spfft_rc(Ty,z), reshape(y,(m,l)), P.X)
     end
   end
 end
@@ -159,13 +159,13 @@ function plan_sprfft{T<:SpFFTReal,Ti<:Integer}(
   l, m = spfft_blkdiv(n, k)
   lc = div(l, 2) + 1
   Tc = Complex{T}
-  X  = Array(T , l , m)
-  Xc = Array(Tc, lc, m)
+  X  = Array{T }(l , m)
+  Xc = Array{Tc}(lc, m)
   F = plan_rfft(X, 1; args...)
   wm = exp(-2im*pi/m)
   wn = exp(-2im*pi/n)
-  w = Array(Tc, k)
-  col = Array(Int, k)
+  w = Array{Tc}(k)
+  col = Array{Int}(k)
   @inbounds for i = 1:k
     rowm1, colm1 = divrem(idx[i]-1, l)
     w[i] = wm^rowm1 * wn^colm1
@@ -187,8 +187,8 @@ function sprfft_f2s!{T,Tx<:Real,Ty<:Complex}(
   A_mul_B!(P.Xc, P.F, P.X)
   nb = min(nb, k)
   Tc = Complex{T}
-  t = Array(Ty, nb)
-  s = Array(Tc, nb)
+  t = Array{Ty}(nb)
+  s = Array{Tc}(nb)
   nyq = size(P.Xc, 1)
   idx = 0
   while idx < k
@@ -235,14 +235,14 @@ function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
   l, m = spfft_blkdiv(n, k)
   lc = div(l, 2) + 1
   Tc = Complex{T}
-  X  = Array(T , l , m)
-  Xc = Array(Tc, lc, m)
+  X  = Array{T }(l , m)
+  Xc = Array{Tc}(lc, m)
   F = plan_brfft(Xc, l, 1; args...)
   wm = exp(2im*pi/m)
   wn = exp(2im*pi/n)
-  w = Array(Tc, 0)
-  col = Array(Int, 0)
-  xp = Array(Int, 0)
+  w = Array{Tc}(0)
+  col = Array{Int}(0)
+  xp = Array{Int}(0)
   sizehint!(  w, k)
   sizehint!(col, k)
   sizehint!( xp, k)
@@ -279,8 +279,8 @@ function spbrfft_s2f!{T,Tx<:Complex,Ty<:Real}(
   P.Xc[:] = 0
   nb = min(nb, kc)
   Tc = Complex{T}
-  t = Array(Tx, nb)
-  s = Array(Tc, nb)
+  t = Array{Tx}(nb)
+  s = Array{Tc}(nb)
   idx = 0
   while idx < kc
     s[:] = 1

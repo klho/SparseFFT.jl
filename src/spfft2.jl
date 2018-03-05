@@ -1,7 +1,7 @@
 #= src/spfft2.jl
 =#
 
-abstract SpFFTPlan2{T,K}
+abstract type SpFFTPlan2{T,K} end
 
 # complex transforms
 
@@ -26,9 +26,9 @@ for (fcn, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
       P2 = $psf(T, n2, idx2; args...)
       k1 = length(idx1)
       k2 = length(idx2)
-      k1n2 = Array(T, k1, n2)
-      n2k1 = Array(T, n2, k1)
-      k2k1 = Array(T, k2, k1)
+      k1n2 = Array{T}(k1, n2)
+      n2k1 = Array{T}(n2, k1)
+      k2k1 = Array{T}(k2, k1)
       cSpFFTPlan2{T,$K}(P1, P2, k1n2, n2k1, k2k1)
     end
 
@@ -48,7 +48,7 @@ for (fcn, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
       @inbounds for i = 1:k1
         $f2s(view(P.k2k1,:,i), P.P2, view(P.n2k1,:,i); args...)
       end
-      transpose_f!(_->spfft_rc(Ty,_), Y, P.k2k1)
+      transpose_f!(z->spfft_rc(Ty,z), Y, P.k2k1)
     end
 
     function $s2f{T,K,Tx,Ty}(
@@ -93,9 +93,9 @@ function plan_sprfft{T<:SpFFTReal,Ti<:Integer}(
   P2 = plan_spfft(Tc, n2, idx2; args...)
   k1 = length(idx1)
   k2 = length(idx2)
-  k1n2 = Array(Tc, k1, n2)
-  n2k1 = Array(Tc, n2, k1)
-  k2k1 = Array(Tc, k2, k1)
+  k1n2 = Array{Tc}(k1, n2)
+  n2k1 = Array{Tc}(n2, k1)
+  k2k1 = Array{Tc}(k2, k1)
   rSpFFTPlan2{T,Tc}(P1, P2, k1n2, n2k1, k2k1)
 end
 
@@ -138,9 +138,9 @@ function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
   P2 = plan_spbfft(Tc, n2, idx2; args...)
   k1 = length(idx1)
   k2 = length(idx2)
-  k1n2 = Array(T , k1, n2)
-  n2k1 = Array(Tc, n2, k1)
-  k2k1 = Array(Tc, k2, k1)
+  k1n2 = Array{T }(k1, n2)
+  n2k1 = Array{Tc}(n2, k1)
+  k2k1 = Array{Tc}(k2, k1)
   brSpFFTPlan2{T,Tc}(P1, P2, k1n2, n2k1, k2k1)
 end
 
