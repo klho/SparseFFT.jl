@@ -2,7 +2,9 @@
 =#
 
 println("spfft1.jl")
-tic()
+@time begin
+
+@testset "spfft1" begin
 
 n = 1500
 k =  151
@@ -13,24 +15,24 @@ r = randperm(n)[1:k]
 
 for fcn in (:fft, :bfft)
   sf = Symbol("sp", fcn)
-  for T in (Complex64, Complex128)
+  for T in (ComplexF32, ComplexF64)
     println("  $sf/$T")
     Tr = real(T)
 
     psf = Symbol("plan_", sf)
-    @eval P = $psf($T, n, r)
+    @eval P = $psf($T, $n, $r)
 
-    x  = Array{T}(n)
-    y  = Array{T}(k)
-    xr = Array{Tr}(size(x))
-    yr = Array{Tr}(size(y))
+    x  = Array{T }(undef, n)
+    y  = Array{T }(undef, k)
+    xr = Array{Tr}(undef, size(x))
+    yr = Array{Tr}(undef, size(y))
 
     # f2s
     f2s = Symbol(sf, "_f2s!")
     rand!(x)
 
     ## (c2c, f2s)
-    @eval f = $fcn($x)[r]
+    @eval f = $fcn($x)[$r]
     @eval $f2s($y, P, $x)
     @test f ≈ y
 
@@ -40,7 +42,7 @@ for fcn in (:fft, :bfft)
 
     ## (r2c, f2s)
     xr[:] = real(x)
-    @eval f = $fcn($xr)[r]
+    @eval f = $fcn($xr)[$r]
     @eval $f2s($y, P, $xr)
     @test f ≈ y
 
@@ -49,7 +51,7 @@ for fcn in (:fft, :bfft)
     rand!(y)
 
     ## (c2c, s2f)
-    x[:] = 0
+    fill!(x, 0)
     x[r] = y
     @eval f = $fcn($x)
     @eval $s2f($x, P, $y)
@@ -61,7 +63,7 @@ for fcn in (:fft, :bfft)
 
     ## (r2c, s2f)
     yr[:] = real(y)
-    x[:] = 0
+    fill!(x, 0)
     x[r] = yr
     @eval f = $fcn($x)
     @eval $s2f($x, P, $yr)
@@ -72,14 +74,14 @@ end
 # real transforms
 
 m = div(n,2) + 1
-r = vcat([1,m], 1+randperm(m-2)[1:k-2])  # include edge cases
+r = vcat([1,m], 1 .+ randperm(m-2)[1:k-2])  # include edge cases
 
 for T in (Float32, Float64)
   Tc = Complex{T}
 
-  x  = Array{T }(n)
-  y  = Array{Tc}(k)
-  xc = Array{Tc}(m)
+  x  = Array{T }(undef, n)
+  y  = Array{Tc}(undef, k)
+  xc = Array{Tc}(undef, m)
 
   # (r2c, f2s)
   println("  sprfft/$T")
@@ -96,11 +98,12 @@ for T in (Float32, Float64)
   y[r.==1] = real(y[r.==1])
   even = n % 2 == 0
   even && (y[r.==m] = real(y[r.==m]))
-  xc[:] = 0
+  fill!(xc, 0)
   xc[r] = y
   f = brfft(xc, n)
   spbrfft_s2f!(x, P, y)
   @test f ≈ x
 end
 
-toc()
+end
+end

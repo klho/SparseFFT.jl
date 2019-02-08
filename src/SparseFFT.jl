@@ -8,7 +8,11 @@ References:
 
 module SparseFFT
 
-using Base.FFTW: fftwReal, fftwComplex, fftwNumber, FORWARD, BACKWARD, FFTWPlan
+using FFTW:
+  fftwReal, fftwComplex, fftwNumber, FORWARD, BACKWARD,
+  FFTWPlan, plan_fft!, plan_bfft!, plan_rfft, plan_brfft
+
+using LinearAlgebra: mul!, transpose!
 
 export
   cSpFFTPlan1, rSpFFTPlan1, brSpFFTPlan1,
@@ -28,8 +32,8 @@ const FFTPlan      = FFTWPlan
 # for complex-to-real transpose (copy from master 2421ff2)
 const transposebaselength=64
 function transpose_f!(f,B::AbstractMatrix,A::AbstractMatrix)
-    inds = indices(A)
-    indices(B,1) == inds[2] && indices(B,2) == inds[1] || throw(DimensionMismatch(string(f)))
+    inds = axes(A)
+    axes(B,1) == inds[2] && axes(B,2) == inds[1] || throw(DimensionMismatch(string(f)))
 
     m, n = length(inds[1]), length(inds[2])
     if m*n<=4*transposebaselength
@@ -48,8 +52,8 @@ end
 function transposeblock!(f,B::AbstractMatrix,A::AbstractMatrix,m::Int,n::Int,offseti::Int,offsetj::Int)
     if m*n<=transposebaselength
         @inbounds begin
-            for j = offsetj+(1:n)
-                for i = offseti+(1:m)
+            for j = offsetj .+ (1:n)
+                for i = offseti .+ (1:m)
                     B[j,i] = f(A[i,j])
                 end
             end

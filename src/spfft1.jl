@@ -14,7 +14,7 @@ function spfft_blkdiv(n::Integer, k::Integer)
   l, m
 end
 
-function spfft_chkidx{T<:Integer}(n::Integer, idx::AbstractVector{T})
+function spfft_chkidx(n::Integer, idx::AbstractVector{T}) where {T<:Integer}
   n > 0 || throw(ArgumentError("n"))
   for i in idx
     (1 <= i <= n) || throw(DomainError())
@@ -29,7 +29,7 @@ spfft_size(P::SpFFTPlan1) = (size(P.X)..., length(P.w))
 # -- if real output, will take real part
 # - note: (r2c, f2s) and (c2r, s2f) can be further optimized
 
-immutable cSpFFTPlan1{T<:SpFFTComplex,K} <: SpFFTPlan1{T,K}
+struct cSpFFTPlan1{T<:SpFFTComplex,K} <: SpFFTPlan1{T,K}
   X::Matrix{T}
   F::FFTPlan{T,K}
   w::Vector{T}
@@ -37,8 +37,8 @@ immutable cSpFFTPlan1{T<:SpFFTComplex,K} <: SpFFTPlan1{T,K}
   p::Vector{Int}
 end
 
-spfft_rc{T<:Real   }(::Type{T}, x) = real(x)  # no inexact error check
-spfft_rc{T<:Complex}(::Type{T}, x) =      x
+spfft_rc(::Type{T}, x) where {T<:Real   } = real(x)  # no inexact error check
+spfft_rc(::Type{T}, x) where {T<:Complex} =      x
 
 for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
   sf  = Symbol("sp", f)
@@ -47,17 +47,17 @@ for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
   f2s = Symbol(sf, "_f2s!")
   s2f = Symbol(sf, "_s2f!")
   @eval begin
-    function $psf{T<:SpFFTComplex,Ti<:Integer}(
-        ::Type{T}, n::Integer, idx::AbstractVector{Ti}; args...)
+    function $psf(::Type{T}, n::Integer, idx::AbstractVector{Ti};
+                  args...) where {T<:SpFFTComplex,Ti<:Integer}
       spfft_chkidx(n, idx)
       k = length(idx)
       l, m = spfft_blkdiv(n, k)
-      X = Array{T}(l, m)
+      X = Array{T}(undef, l, m)
       F = $pf(X, 1; args...)
       wm = exp(2im*$K*pi/m)
       wn = exp(2im*$K*pi/n)
-      w = Array{T}(k)
-      col = Array{Int}(k)
+      w   = Array{T  }(undef, k)
+      col = Array{Int}(undef, k)
       @inbounds for i = 1:k
         rowm1, colm1 = divrem(idx[i]-1, l)
         w[i] = wm^rowm1 * wn^colm1
@@ -69,21 +69,20 @@ for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
       cSpFFTPlan1{T,$K}(X, F, w, col, p)
     end
 
-    function $f2s{T,K,Tx,Ty}(
-        y::AbstractVector{Ty}, P::cSpFFTPlan1{T,K}, x::AbstractVector{Tx};
-        nb::Integer=$NB)
+    function $f2s(y::AbstractVector{Ty}, P::cSpFFTPlan1{T,K},
+                  x::AbstractVector{Tx}; nb::Integer=$NB) where {T,K,Tx,Ty}
       l, m, k = spfft_size(P)
       length(x) == l*m || throw(DimensionMismatch)
       length(y) == k   || throw(DimensionMismatch)
       transpose!(P.X, reshape(x,(m,l)))
       P.F*P.X
       nb = min(nb, k)
-      t = Array{Ty}(nb)
-      s = Array{T }(nb)
+      t = Array{Ty}(undef, nb)
+      s = Array{T }(undef, nb)
       idx = 0
       while idx < k
-        t[:] = 0
-        s[:] = 1
+        fill!(t, 0)
+        fill!(s, 1)
         nbi = min(nb, k-idx)
         @inbounds for j = 1:m
           for i = 1:nbi
@@ -100,19 +99,18 @@ for (f, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
       y
     end
 
-    function $s2f{T,K,Tx,Ty}(
-        y::AbstractVector{Ty}, P::cSpFFTPlan1{T,K}, x::AbstractVector{Tx};
-        nb::Integer=$NB)
+    function $s2f(y::AbstractVector{Ty}, P::cSpFFTPlan1{T,K},
+                  x::AbstractVector{Tx}; nb::Integer=$NB) where {T,K,Tx,Ty}
       l, m, k = spfft_size(P)
       length(x) == k   || throw(DimensionMismatch)
       length(y) == l*m || throw(DimensionMismatch)
-      P.X[:] = 0
+      fill!(P.X, 0)
       nb = min(nb, k)
-      t = Array{Tx}(nb)
-      s = Array{T }(nb)
+      t = Array{Tx}(undef, nb)
+      s = Array{T }(undef, nb)
       idx = 0
       while idx < k
-        s[:] = 1
+        fill!(s, 1)
         nbi = min(nb, k-idx)
         @inbounds for i = 1:nbi
           t[i] = x[P.p[idx+i]]
@@ -136,7 +134,7 @@ end
 
 ## (r2c, f2s)
 
-immutable rSpFFTPlan1{T<:SpFFTReal} <: SpFFTPlan1{T,FORWARD}
+struct rSpFFTPlan1{T<:SpFFTReal} <: SpFFTPlan1{T,FORWARD}
   X::Matrix{T}
   Xc::Matrix{Complex{T}}
   F::FFTPlan{T,FORWARD}
@@ -145,27 +143,27 @@ immutable rSpFFTPlan1{T<:SpFFTReal} <: SpFFTPlan1{T,FORWARD}
   p::Vector{Int}
 end
 
-function sprfft_fullcomplex{T<:SpFFTComplex}(
-    X::Matrix{T}, i::Integer, j::Integer, n::Integer, inyq::Integer)
+function sprfft_fullcomplex(X::Matrix{T}, i::Integer, j::Integer, n::Integer,
+                            inyq::Integer) where {T<:SpFFTComplex}
   if i <= inyq  return      X[  i  ,j]
   else          return conj(X[n-i+2,j])  # hermitian conjugate
   end
 end
 
-function plan_sprfft{T<:SpFFTReal,Ti<:Integer}(
-    ::Type{T}, n::Integer, idx::AbstractVector{Ti}; args...)
+function plan_sprfft(::Type{T}, n::Integer, idx::AbstractVector{Ti};
+                     args...) where {T<:SpFFTReal,Ti<:Integer}
   spfft_chkidx(n, idx)
   k = length(idx)
   l, m = spfft_blkdiv(n, k)
   lc = div(l, 2) + 1
   Tc = Complex{T}
-  X  = Array{T }(l , m)
-  Xc = Array{Tc}(lc, m)
+  X  = Array{T }(undef, l , m)
+  Xc = Array{Tc}(undef, lc, m)
   F = plan_rfft(X, 1; args...)
   wm = exp(-2im*pi/m)
   wn = exp(-2im*pi/n)
-  w = Array{Tc}(k)
-  col = Array{Int}(k)
+  w   = Array{Tc }(undef, k)
+  col = Array{Int}(undef, k)
   @inbounds for i = 1:k
     rowm1, colm1 = divrem(idx[i]-1, l)
     w[i] = wm^rowm1 * wn^colm1
@@ -177,23 +175,23 @@ function plan_sprfft{T<:SpFFTReal,Ti<:Integer}(
   rSpFFTPlan1{T}(X, Xc, F, w, col, p)
 end
 
-function sprfft_f2s!{T,Tx<:Real,Ty<:Complex}(
+function sprfft_f2s!(
     y::AbstractVector{Ty}, P::rSpFFTPlan1{T}, x::AbstractVector{Tx};
-    nb::Integer=NB)
+    nb::Integer=NB) where {T,Tx<:Real,Ty<:Complex}
   l, m, k = spfft_size(P)
   length(x) == l*m || throw(DimensionMismatch)
   length(y) == k   || throw(DimensionMismatch)
   transpose!(P.X, reshape(x,(m,l)))
-  A_mul_B!(P.Xc, P.F, P.X)
+  mul!(P.Xc, P.F, P.X)
   nb = min(nb, k)
   Tc = Complex{T}
-  t = Array{Ty}(nb)
-  s = Array{Tc}(nb)
+  t = Array{Ty}(undef, nb)
+  s = Array{Tc}(undef, nb)
   nyq = size(P.Xc, 1)
   idx = 0
   while idx < k
-    t[:] = 0
-    s[:] = 1
+    fill!(t, 0)
+    fill!(s, 1)
     nbi = min(nb, k-idx)
     @inbounds for j = 1:m
       for i = 1:nbi
@@ -215,7 +213,7 @@ end
 ## - input must contain only nonredundant frequencies, i.e., up to index n/2 + 1
 ##   for a full signal of size n
 
-immutable brSpFFTPlan1{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan1{T,BACKWARD}
+struct brSpFFTPlan1{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan1{T,BACKWARD}
   X::Matrix{T}
   Xc::Matrix{Tc}
   F::FFTPlan{Tc,BACKWARD}
@@ -227,22 +225,22 @@ end
 
 spbrfft_size(P::brSpFFTPlan1) = (spfft_size(P)..., P.k)
 
-function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
-    ::Type{T}, n::Integer, idx::AbstractVector{Ti}; args...)
+function plan_spbrfft(::Type{T}, n::Integer, idx::AbstractVector{Ti};
+                      args...) where {T<:SpFFTReal,Ti<:Integer}
   nyqm1 = div(n, 2)
   spfft_chkidx(nyqm1+1, idx)
   k = length(idx)
   l, m = spfft_blkdiv(n, k)
   lc = div(l, 2) + 1
   Tc = Complex{T}
-  X  = Array{T }(l , m)
-  Xc = Array{Tc}(lc, m)
+  X  = Array{T }(undef, l , m)
+  Xc = Array{Tc}(undef, lc, m)
   F = plan_brfft(Xc, l, 1; args...)
   wm = exp(2im*pi/m)
   wn = exp(2im*pi/n)
-  w = Array{Tc}(0)
-  col = Array{Int}(0)
-  xp = Array{Int}(0)
+  w   = Array{Tc }(undef, 0)
+  col = Array{Int}(undef, 0)
+  xp  = Array{Int}(undef, 0)
   sizehint!(  w, k)
   sizehint!(col, k)
   sizehint!( xp, k)
@@ -270,20 +268,20 @@ function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
   brSpFFTPlan1{T,Tc}(X, Xc, F, k, w, col, xp)
 end
 
-function spbrfft_s2f!{T,Tx<:Complex,Ty<:Real}(
+function spbrfft_s2f!(
     y::AbstractVector{Ty}, P::brSpFFTPlan1{T}, x::AbstractVector{Tx};
-    nb::Integer=NB)
+    nb::Integer=NB) where {T,Tx<:Complex,Ty<:Real}
   l, m, kc, k = spbrfft_size(P)
   length(x) == k   || throw(DimensionMismatch)
   length(y) == l*m || throw(DimensionMismatch)
-  P.Xc[:] = 0
+  fill!(P.Xc, 0)
   nb = min(nb, kc)
   Tc = Complex{T}
-  t = Array{Tx}(nb)
-  s = Array{Tc}(nb)
+  t = Array{Tx}(undef, nb)
+  s = Array{Tc}(undef, nb)
   idx = 0
   while idx < kc
-    s[:] = 1
+    fill!(s, 1)
     nbi = min(nb, kc-idx)
     @inbounds for i = 1:nbi
       p = P.p[idx+i]
@@ -298,7 +296,7 @@ function spbrfft_s2f!{T,Tx<:Complex,Ty<:Real}(
     end
     idx += nbi
   end
-  A_mul_B!(P.X, P.F, P.Xc)
+  mul!(P.X, P.F, P.Xc)
   transpose!(reshape(y,(m,l)), P.X)
   y
 end

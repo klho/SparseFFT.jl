@@ -5,7 +5,7 @@ abstract type SpFFTPlan2{T,K} end
 
 # complex transforms
 
-immutable cSpFFTPlan2{T<:SpFFTComplex,K} <: SpFFTPlan2{T,K}
+struct cSpFFTPlan2{T<:SpFFTComplex,K} <: SpFFTPlan2{T,K}
   P1::cSpFFTPlan1{T,K}
   P2::cSpFFTPlan1{T,K}
   k1n2::Matrix{T}
@@ -19,22 +19,21 @@ for (fcn, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
   f2s = Symbol(sf, "_f2s!")
   s2f = Symbol(sf, "_s2f!")
   @eval begin
-    function $psf{T<:SpFFTComplex,Ti<:Integer}(
-        ::Type{T}, n1::Integer, n2::Integer,
-        idx1::AbstractVector{Ti}, idx2::AbstractVector{Ti}; args...)
+    function $psf(::Type{T}, n1::Integer, n2::Integer,
+                  idx1::AbstractVector{Ti}, idx2::AbstractVector{Ti};
+                  args...) where {T<:SpFFTComplex,Ti<:Integer}
       P1 = $psf(T, n1, idx1; args...)
       P2 = $psf(T, n2, idx2; args...)
       k1 = length(idx1)
       k2 = length(idx2)
-      k1n2 = Array{T}(k1, n2)
-      n2k1 = Array{T}(n2, k1)
-      k2k1 = Array{T}(k2, k1)
+      k1n2 = Array{T}(undef, k1, n2)
+      n2k1 = Array{T}(undef, n2, k1)
+      k2k1 = Array{T}(undef, k2, k1)
       cSpFFTPlan2{T,$K}(P1, P2, k1n2, n2k1, k2k1)
     end
 
-    function $f2s{T,K,Tx,Ty}(
-        Y::AbstractMatrix{Ty}, P::cSpFFTPlan2{T,K}, X::AbstractMatrix{Tx};
-        args...)
+    function $f2s(Y::AbstractMatrix{Ty}, P::cSpFFTPlan2{T,K},
+                  X::AbstractMatrix{Tx}; args...) where {T,K,Tx,Ty}
       l1, m1, k1 = spfft_size(P.P1)
       l2, m2, k2 = spfft_size(P.P2)
       n1 = l1*m1
@@ -51,9 +50,8 @@ for (fcn, K) in ((:fft, FORWARD), (:bfft, BACKWARD))
       transpose_f!(z->spfft_rc(Ty,z), Y, P.k2k1)
     end
 
-    function $s2f{T,K,Tx,Ty}(
-        Y::AbstractMatrix{Ty}, P::cSpFFTPlan2{T,K}, X::AbstractMatrix{Tx};
-        args...)
+    function $s2f(Y::AbstractMatrix{Ty}, P::cSpFFTPlan2{T,K},
+                  X::AbstractMatrix{Tx}; args...) where {T,K,Tx,Ty}
       l1, m1, k1 = spfft_size(P.P1)
       l2, m2, k2 = spfft_size(P.P2)
       n1 = l1*m1
@@ -77,7 +75,7 @@ end
 
 ## (r2c, f2s)
 
-immutable rSpFFTPlan2{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan2{T,FORWARD}
+struct rSpFFTPlan2{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan2{T,FORWARD}
   P1::rSpFFTPlan1{T}
   P2::cSpFFTPlan1{Tc,FORWARD}
   k1n2::Matrix{Tc}
@@ -85,23 +83,23 @@ immutable rSpFFTPlan2{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan2{T,FORWARD}
   k2k1::Matrix{Tc}
 end
 
-function plan_sprfft{T<:SpFFTReal,Ti<:Integer}(
-    ::Type{T}, n1::Integer, n2::Integer,
-    idx1::AbstractVector{Ti}, idx2::AbstractVector{Ti}; args...)
+function plan_sprfft(::Type{T}, n1::Integer, n2::Integer,
+                     idx1::AbstractVector{Ti}, idx2::AbstractVector{Ti};
+                     args...) where {T<:SpFFTReal,Ti<:Integer}
   Tc = Complex{T}
   P1 = plan_sprfft(T, n1, idx1; args...)
   P2 = plan_spfft(Tc, n2, idx2; args...)
   k1 = length(idx1)
   k2 = length(idx2)
-  k1n2 = Array{Tc}(k1, n2)
-  n2k1 = Array{Tc}(n2, k1)
-  k2k1 = Array{Tc}(k2, k1)
+  k1n2 = Array{Tc}(undef, k1, n2)
+  n2k1 = Array{Tc}(undef, n2, k1)
+  k2k1 = Array{Tc}(undef, k2, k1)
   rSpFFTPlan2{T,Tc}(P1, P2, k1n2, n2k1, k2k1)
 end
 
-function sprfft_f2s!{T,Tx<:Real,Ty<:Complex}(
+function sprfft_f2s!(
     Y::AbstractMatrix{Ty}, P::rSpFFTPlan2{T}, X::AbstractMatrix{Tx};
-    args...)
+    args...) where {T,Tx<:Real,Ty<:Complex}
   l1, m1, k1 = spfft_size(P.P1)
   l2, m2, k2 = spfft_size(P.P2)
   n1 = l1*m1
@@ -122,7 +120,7 @@ end
 ## - input must contain only nonredundant frequencies, i.e., up to index
 ##   n1/2 + 1 in the first dimension for a full size of n1
 
-immutable brSpFFTPlan2{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan2{T,BACKWARD}
+struct brSpFFTPlan2{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan2{T,BACKWARD}
   P1::brSpFFTPlan1{T,Tc}
   P2::cSpFFTPlan1{Tc,BACKWARD}
   k1n2::Matrix{Tc}
@@ -130,23 +128,23 @@ immutable brSpFFTPlan2{T<:SpFFTReal,Tc<:SpFFTComplex} <: SpFFTPlan2{T,BACKWARD}
   k2k1::Matrix{Tc}
 end
 
-function plan_spbrfft{T<:SpFFTReal,Ti<:Integer}(
-    ::Type{T}, n1::Integer, n2::Integer,
-    idx1::AbstractVector{Ti}, idx2::AbstractVector{Ti}; args...)
+function plan_spbrfft(::Type{T}, n1::Integer, n2::Integer,
+                      idx1::AbstractVector{Ti}, idx2::AbstractVector{Ti};
+                      args...) where {T<:SpFFTReal,Ti<:Integer}
   Tc = Complex{T}
   P1 = plan_spbrfft(T, n1, idx1; args...)
   P2 = plan_spbfft(Tc, n2, idx2; args...)
   k1 = length(idx1)
   k2 = length(idx2)
-  k1n2 = Array{T }(k1, n2)
-  n2k1 = Array{Tc}(n2, k1)
-  k2k1 = Array{Tc}(k2, k1)
+  k1n2 = Array{T }(undef, k1, n2)
+  n2k1 = Array{Tc}(undef, n2, k1)
+  k2k1 = Array{Tc}(undef, k2, k1)
   brSpFFTPlan2{T,Tc}(P1, P2, k1n2, n2k1, k2k1)
 end
 
-function spbrfft_s2f!{T,Tx<:Complex,Ty<:Real}(
+function spbrfft_s2f!(
     Y::AbstractMatrix{Ty}, P::brSpFFTPlan2{T}, X::AbstractMatrix{Tx};
-    args...)
+    args...) where {T,Tx<:Complex,Ty<:Real}
   l1, m1, kc1, k1 = spbrfft_size(P.P1)
   l2, m2, k2 = spfft_size(P.P2)
   n1 = l1*m1

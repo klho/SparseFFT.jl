@@ -2,7 +2,9 @@
 =#
 
 println("spfft2.jl")
-tic()
+@time begin
+
+@testset "spfft2" begin
 
 n1 = 50
 n2 = 50
@@ -16,24 +18,24 @@ r2 = randperm(n2)[1:k2]
 
 for fcn in (:fft, :bfft)
   sf = Symbol("sp", fcn)
-  for T in (Complex64, Complex128)
+  for T in (ComplexF32, ComplexF64)
     println("  $sf/$T")
     Tr = real(T)
 
     psf = Symbol("plan_", sf)
-    @eval P = $psf($T, n1, n2, r1, r2)
+    @eval P = $psf($T, $n1, $n2, $r1, $r2)
 
-    x  = Array{T}(n1, n2)
-    y  = Array{T}(k1, k2)
-    xr = Array{Tr}(size(x))
-    yr = Array{Tr}(size(y))
+    x  = Array{T }(undef, n1, n2)
+    y  = Array{T }(undef, k1, k2)
+    xr = Array{Tr}(undef, size(x))
+    yr = Array{Tr}(undef, size(y))
 
     # f2s
     f2s = Symbol(sf, "_f2s!")
     rand!(x)
 
     ## (c2c, f2s)
-    @eval f = $fcn($x)[r1,r2]
+    @eval f = $fcn($x)[$r1,$r2]
     @eval $f2s($y, P, $x)
     @test f ≈ y
 
@@ -43,7 +45,7 @@ for fcn in (:fft, :bfft)
 
     ## (r2c, f2s)
     xr[:] = real(x)
-    @eval f = $fcn($xr)[r1,r2]
+    @eval f = $fcn($xr)[$r1,$r2]
     @eval $f2s($y, P, $xr)
     @test f ≈ y
 
@@ -52,7 +54,7 @@ for fcn in (:fft, :bfft)
     rand!(y)
 
     ## (c2c, s2f)
-    x[:] = 0
+    fill!(x, 0)
     x[r1,r2] = y
     @eval f = $fcn($x)
     @eval $s2f($x, P, $y)
@@ -64,7 +66,7 @@ for fcn in (:fft, :bfft)
 
     ## (r2c, s2f)
     yr[:] = real(y)
-    x[:] = 0
+    fill!(x, 0)
     x[r1,r2] = yr
     @eval f = $fcn($x)
     @eval $s2f($x, P, $yr)
@@ -76,15 +78,15 @@ end
 
 m1 = div(n1,2) + 1
 m2 = div(n2,2) + 1
-r1 = vcat([1,m1], 1+randperm(m1-2)[1:k1-2])  # include edge cases
-r2 = vcat([1,m2], 1+randperm(m2-2)[1:k2-2])
+r1 = vcat([1,m1], 1 .+ randperm(m1-2)[1:k1-2])  # include edge cases
+r2 = vcat([1,m2], 1 .+ randperm(m2-2)[1:k2-2])
 
 for T in (Float32, Float64)
   Tc = Complex{T}
 
-  x  = Array{T }(n1, n2)
-  y  = Array{Tc}(k1, k2)
-  xc = Array{Tc}(m1, n2)
+  x  = Array{T }(undef, n1, n2)
+  y  = Array{Tc}(undef, k1, k2)
+  xc = Array{Tc}(undef, m1, n2)
 
   # (r2c, f2s)
   println("  sprfft/$T")
@@ -104,11 +106,12 @@ for T in (Float32, Float64)
   even1 && (y[r1.==m1,1] = real(y[r1.==m1,1]))
   even2 && (y[1,r2.==m2] = real(y[1,r2.==m2]))
   (even1 && even2) && (y[r1.==m1,r2.==m2] = real(y[r1.==m1,r2.==m2]))
-  xc[:] = 0
+  fill!(xc, 0)
   xc[r1,r2] = y
   f = brfft(xc, n1)
   spbrfft_s2f!(x, P, y)
   @test f ≈ x
 end
 
-toc()
+end
+end

@@ -34,6 +34,8 @@ For further details, see:
 
 **Note**: An obvious optimization that we have not implemented here is to simply do the full FFT then subsample for transforms that are too small or not sufficiently sparse. This is especially important in higher dimensions where each individual dimension may not directly permit much savings.
 
+**Warning**: This package is no longer actively maintained (nor is it really all that useful). Last updated for Julia 1.0.
+
 ## Usage
 
 SparseFFT follows the same organizational principle as FFTW, with separate planning and execution routines. The primary planning functions in 1D are:
@@ -79,8 +81,9 @@ The following example computes a random 100 x 100 subset of the spectrum of a 10
 
 ```julia
 using SparseFFT
+using FFTW, LinearAlgebra, Random
 
-T = Complex128
+T = ComplexF64
 n1 = 1000
 n2 = 1000
 k1 = 100
@@ -94,7 +97,7 @@ y = rand(T, k1, k2)
 @time P = plan_spfft(T, n1, n2, idx1, idx2)
 @time spfft_f2s!(y, P, x)
 
-vecnorm(f - y)/vecnorm(f)
+norm(f - y)/norm(f)
 ```
 
 Sample output (with annotations):

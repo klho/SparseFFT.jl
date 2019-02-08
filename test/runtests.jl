@@ -1,5 +1,6 @@
+using Test
 using SparseFFT
-using Base.Test
+using FFTW, Random
 
 include("spfft1.jl")
 include("spfft2.jl")
